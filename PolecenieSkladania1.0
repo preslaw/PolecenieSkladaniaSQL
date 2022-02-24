@@ -1,0 +1,53 @@
+SELECT
+TABELA.Location,
+TABELA.Item,
+Tabela.PCS,
+NULL AS CTNS,
+'x',
+NULL AS QUANTITY,
+'=',
+NULL AS TOTAL,
+TABELA.NrDokumentu,
+TABELA.CONSIGNEE AS CONSIGNEE,
+TABELA.SHIPTO AS 'SHIP TO:',
+TABELA.Uwagi
+
+
+FROM
+(
+SELECT
+CONCAT ( KONTRAHENT.kh_Symbol,' ',ADRES.adr_nazwa,' ',ADRES.adr_Ulica,' ',ADRES.adr_NrDomu,' ',ADRES.adr_NrLokalu,' ', ADRES.adr_Kod ,' ',ADRES.adr_Miejscowosc,' ', ADRES.adr_IdPanstwo,' ', KONTRAHENT.kh_EMail) as CONSIGNEE,
+CASE 
+   WHEN KONTRAHENT.kh_AdresDostawy =1 
+   THEN CONCAT ( KONTRAHENT.kh_Symbol,' ',SHIPADRES.adr_nazwa,' ',SHIPADRES.adr_Ulica,' ',SHIPADRES.adr_NrDomu,' ',SHIPADRES.adr_NrLokalu,' ', SHIPADRES.adr_Kod ,' ', SHIPADRES.adr_Miejscowosc,' ', SHIPADRES.adr_IdPanstwo) 
+   ELSE CONCAT ( KONTRAHENT.kh_Symbol,' ',ADRES.adr_nazwa,' ',ADRES.adr_Ulica,' ',ADRES.adr_NrDomu,' ',ADRES.adr_NrLokalu,' ', ADRES.adr_Kod ,' ',ADRES.adr_Miejscowosc,' ', ADRES.adr_IdPanstwo)
+   END as SHIPTO,
+KONTRAHENT.kh_Symbol AS Kontrahent ,
+ADRES.adr_nazwa AS NazwaFirmy,
+DOKUMENT.dok_NrPelny AS NrDokumentu,
+DOKUMENT.dok_Uwagi as Uwagi,
+TOWAR.tw_Symbol AS Item, 
+TOWAR.tw_Pole1 AS Name,
+TOWAR.tw_pole8 AS Location,
+TOWAR.tw_Opis AS ItemName,
+POZYCJA.ob_Ilosc AS PCS,
+COUNT(POZYCJA.ob_ilosc) OVER (PARTITION BY DOKUMENT.dok_NrPelny ) as 'PosCOUNT'
+
+FROM 
+(dok__dokument DOKUMENT INNER JOIN dok_pozycja POZYCJA ON DOKUMENT.dok_Id = POZYCJA.ob_DokHanId) 
+JOIN tw__towar TOWAR ON POZYCJA.ob_TowId = TOWAR.tw_Id AND TOWAR.tw_Rodzaj=1
+JOIN kh__Kontrahent KONTRAHENT ON DOKUMENT.dok_PlatnikId=KONTRAHENT.kh_id
+JOIN adr__Ewid ADRES ON KONTRAHENT.kh_id = ADRES.adr_idObiektu  AND ADRES.adr_TypAdresu = 1
+JOIN adr__Ewid SHIPADRES ON KONTRAHENT.kh_id = SHIPADRES.adr_idObiektu  AND SHIPADRES.adr_TypAdresu = 11
+
+WHERE
+Dok_katId = 6 AND dok_status IN (5,6,7) --- HURTOWA +  Status dokumentu: , 5-zamówienie nie zrealizowane, 6-zamówienie nie zrealizowane bez rezerwacji, 7-zamówienie nie zrealizowane z rezerwacją.
+
+
+) as TABELA
+
+WHERE 
+TABELA.PosCount = 1
+
+ORDER BY
+TABELA.Location
